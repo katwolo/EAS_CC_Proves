@@ -43,6 +43,36 @@ var RESUM_CAPS = ['c1','c3','c5','c4','c2','c6','c7'];
 var RESUM_NOMS = { c1:'Organització', c3:'Responsabilitat', c5:'Treball equip', c4:'Autonomia', c2:'Iniciativa', c6:'Relacions personals', c7:'Resolució de problemes' };
 var CAP_NOMS = { c1:'Organització del treball', c2:'Iniciativa', c3:'Responsabilitat en el treball', c4:'Autonomia', c5:'Treball en equip', c6:'Relacions interpersonals', c7:'Resolució de problemes' };
 
+/* ========================= CACHÉ ========================= */
+var CACHE_TTL = { indicadors:21600, actInd:3600, moduls:3600, usuaris:300 };
+function getCached_(key, ttl, buildFn) {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(key);
+  if (hit) { try { return JSON.parse(hit); } catch(e) {} }
+  var data = buildFn();
+  try { cache.put(key, JSON.stringify(data), ttl); } catch(e) {}
+  return data;
+}
+function bust_(key) { try { CacheService.getScriptCache().remove(key); } catch(e) {} }
+function readMainCached_(k) {
+  return getCached_('sh_'+k, CACHE_TTL[k]||300, function(){ return readMain_(k); });
+}
+function bustMain_(k) { bust_('sh_'+k); }
+
+/* ====================== KEEP-WARM ====================== */
+function keepWarm_() {}
+function installKeepWarmTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if(t.getHandlerFunction()==='keepWarm_') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('keepWarm_').timeBased().everyMinutes(5).create();
+}
+function removeKeepWarmTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if(t.getHandlerFunction()==='keepWarm_') ScriptApp.deleteTrigger(t);
+  });
+}
+
 /* ====================== ENTRADA + ROUTER ====================== */
 function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('Index')
@@ -66,6 +96,8 @@ function handleRequest(action, payload) {
   try {
     switch (action) {
       case 'ping':                  return { ok:true, msg:'pong' };
+      case 'loginAndInit':          var li_=loginAndInit_(payload); return { ok:true, user:li_.user, initialData:li_.initialData };
+      case 'getInitialData':        return { ok:true, initialData: getInitialData_(payload) };
       case 'login':                 return { ok:true, user: loginUser_(payload) };
       case 'getCourses':            return { ok:true, courses: getCourses_(payload) };
       case 'getModules':            return { ok:true, modules: getModules_(payload) };
@@ -135,7 +167,7 @@ function letterOf_(classe){ classe=String(classe); return classe.charAt(classe.l
 /* obre el Sheet d'un mòdul pel Codi */
 function moduleRow_(codi){
   var c=CONFIG.cols.moduls; var found=null;
-  readMain_('moduls').rows.forEach(function(r){ if(normVal_(r[c.codi])===normVal_(codi)) found=r; });
+  readMainCached_('moduls').rows.forEach(function(r){ if(normVal_(r[c.codi])===normVal_(codi)) found=r; });
   return found;
 }
 function openModule_(codi){
@@ -151,7 +183,7 @@ function loginUser_(p){
   var username=String(p.username||'').trim(), password=String(p.password||'');
   if(!username) throw new Error('Cal indicar l\'usuari.');
   var c=CONFIG.cols.usuaris;
-  var rows=readMain_('usuaris').rows;
+  var rows=readMainCached_('usuaris').rows;
   for(var i=0;i<rows.length;i++){ var u=rows[i];
     if(String(u[c.username]).trim()===username && String(u[c.password])===password){
       return { id:String(u[c.id]), nom:String(u[c.nom]), cognom:String(u[c.cognom]), correu:String(u[c.correu]||''),
@@ -164,14 +196,14 @@ function loginUser_(p){
 function parseModuls_(raw){ raw=String(raw||'').trim(); if(!raw||raw.toLowerCase()==='tots') return []; return raw.split(',').map(normVal_).filter(Boolean); }
 
 /* ============== CURS / CLASSE / MÒDUL ============== */
-function modulesIndex_(){ var c=CONFIG.cols.moduls,map={}; readMain_('moduls').rows.forEach(function(r){ map[normVal_(r[c.codi])]={codi:normVal_(r[c.codi]),nom:String(r[c.nom]),curs:normVal_(r[c.curs])}; }); return map; }
+function modulesIndex_(){ var c=CONFIG.cols.moduls,map={}; readMainCached_('moduls').rows.forEach(function(r){ map[normVal_(r[c.codi])]={codi:normVal_(r[c.codi]),nom:String(r[c.nom]),curs:normVal_(r[c.curs])}; }); return map; }
 function visibleModules_(user){ var all=modulesIndex_(),arr=Object.keys(all).map(function(k){return all[k];});
   if(user&&user.rol==='professor'&&user.moduls&&user.moduls.length){ var s={}; user.moduls.forEach(function(c){s[c]=true;}); arr=arr.filter(function(m){return s[m.codi];}); }
   return arr; }
 function getCourses_(p){ var seen={},out=[]; visibleModules_(p.user).forEach(function(m){ if(m.curs&&!seen[m.curs]){seen[m.curs]=true;out.push(m.curs);} }); return out.sort(); }
 function getModules_(p){ var curs=normVal_(p.curs); return visibleModules_(p.user).filter(function(m){return m.curs===curs;}).map(function(m){return {codi:m.codi,nom:m.nom};}); }
 function getClasses_(p){ var curs=normVal_(p.curs),c=CONFIG.cols.usuaris,seen={},out=[];
-  readMain_('usuaris').rows.forEach(function(u){ if(String(u[c.rol])!=='alumne')return; var cl=String(u[c.classe]).trim(); if(cl&&cl.charAt(0)===curs&&!seen[cl]){seen[cl]=true;out.push(cl);} });
+  readMainCached_('usuaris').rows.forEach(function(u){ if(String(u[c.rol])!=='alumne')return; var cl=String(u[c.classe]).trim(); if(cl&&cl.charAt(0)===curs&&!seen[cl]){seen[cl]=true;out.push(cl);} });
   return out.sort(); }
 
 /* ============== PROJECTES (Organització Mòdul) ============== */
@@ -216,7 +248,7 @@ function getActivityTypes_(p){
 /* ============== ACTIVITATS -> INDICADORS (catàleg) ============== */
 function readActivityBlocks_(){
   var c=CONFIG.cols.actInd, blocks={}, paraules={}, current=null;
-  readMain_('actInd').rows.forEach(function(r){
+  readMainCached_('actInd').rows.forEach(function(r){
     var act=String(r[c.activitat]).trim(); if(act){current=act; if(!blocks[current])blocks[current]=[];}
     if(!current)return;
     var codi=normVal_(r[c.codi]); if(codi) blocks[current].push(codi);
@@ -226,7 +258,7 @@ function readActivityBlocks_(){
 }
 function indicatorCatalog_(){
   var c=CONFIG.cols.indicadors,map={};
-  readMain_('indicadors').rows.forEach(function(r){ var codi=String(r[c.codi]).trim(); if(!codi)return;
+  readMainCached_('indicadors').rows.forEach(function(r){ var codi=String(r[c.codi]).trim(); if(!codi)return;
     map[codi]={codi:codi, capacitatId:String(r[c.capacitatId]), capacitat:String(r[c.capacitat]), requisit:String(r[c.requisit]),
       text:String(r[c.text]), colorInd:String(r[c.colorInd]), colorCap:String(r[c.colorCap])}; });
   return map;
@@ -278,7 +310,7 @@ function saveActivity_(p){
 /* ============== ALUMNES ============== */
 function classStudents_(classe){
   var c=CONFIG.cols.usuaris;
-  return readMain_('usuaris').rows
+  return readMainCached_('usuaris').rows
     .filter(function(u){return String(u[c.rol])==='alumne'&&String(u[c.classe]).trim()===classe;})
     .map(function(u){return {id:String(u[c.id]),nom:String(u[c.nom]),cognom:String(u[c.cognom]),classe:String(u[c.classe])};})
     .sort(function(a,b){return (a.cognom+a.nom).localeCompare(b.cognom+b.nom);});
@@ -287,7 +319,7 @@ function getStudents_(p){
   var classe=String(p.classe||'').trim(), moduleCodi=normVal_(p.moduleCodi);
   var grup=(p.grup!==undefined&&p.grup!==null)?Number(p.grup):null;
   var c=CONFIG.cols.usuaris, regular=[], pendents=[], noMatriculats=[], altreGrup=[];
-  readMain_('usuaris').rows.forEach(function(u){
+  readMainCached_('usuaris').rows.forEach(function(u){
     if(String(u[c.rol])!=='alumne')return;
     var ucl=String(u[c.classe]).trim();
     var base={id:String(u[c.id]),nom:String(u[c.nom]),cognom:String(u[c.cognom]),classe:ucl};
@@ -646,7 +678,7 @@ function getBlockDetail_(p){
   if(!blk) throw new Error('Bloc no trobat.');
   var roster=readRosterRows_(sh);
   var c=CONFIG.cols.usuaris; var nameId={};
-  readMain_('usuaris').rows.forEach(function(u){ if(String(u[c.rol])==='alumne') nameId[(String(u[c.nom])+'|'+String(u[c.cognom])).toLowerCase()]=String(u[c.id]); });
+  readMainCached_('usuaris').rows.forEach(function(u){ if(String(u[c.rol])==='alumne') nameId[(String(u[c.nom])+'|'+String(u[c.cognom])).toLowerCase()]=String(u[c.id]); });
   // mateix ordre que en desar (per capacitat)
   var indCodes=sortInds_(getActivityIndicators_({activitat:blk.activitat, moduleCodi:p.moduleCodi}).indicators).map(function(x){return x.codi;});
   var grades={};
@@ -708,7 +740,7 @@ function getModuleResum_(p){
   });});
   // join amb Usuaris per obtenir id
   var cu=CONFIG.cols.usuaris; var idMap={};
-  readMain_('usuaris').rows.forEach(function(u){
+  readMainCached_('usuaris').rows.forEach(function(u){
     if(String(u[cu.classe]).trim()===p.classe)
       idMap[(String(u[cu.nom])+'|'+String(u[cu.cognom])).toLowerCase()]=String(u[cu.id]);
   });
@@ -725,14 +757,14 @@ function getModuleResum_(p){
 function getAlumneGlobalResum_(p){
   var c=CONFIG.cols.usuaris;
   var student=null;
-  readMain_('usuaris').rows.forEach(function(u){ if(String(u[c.id])===String(p.userId)) student=u; });
+  readMainCached_('usuaris').rows.forEach(function(u){ if(String(u[c.id])===String(p.userId)) student=u; });
   if(!student) throw new Error('Alumne no trobat.');
   var nom=String(student[c.nom]).trim(), cognom=String(student[c.cognom]).trim(), classe=String(student[c.classe]).trim();
   var lletra=classe.slice(1); // 'A' de '1A' o '2A'
   var classe1r='1'+lletra, classe2n='2'+lletra;
   // Llegeix TOTS els mòduls (1r i 2n)
   var cm=CONFIG.cols.moduls; var allModuls=[];
-  readMain_('moduls').rows.forEach(function(m){
+  readMainCached_('moduls').rows.forEach(function(m){
     var curs=normVal_(m[cm.curs]);
     if((curs==='1'||curs==='2')&&normVal_(m[cm.sheetId]))
       allModuls.push({codi:normVal_(m[cm.codi]), nom:String(m[cm.nom]), curs:curs});
@@ -779,14 +811,14 @@ function getAlumneGlobalResum_(p){
 function getClassGlobalResum_(p){
   var classe=String(p.classe||'').trim(); if(!classe) return {classe:'',students:[],capNoms:RESUM_NOMS};
   var c=CONFIG.cols.usuaris;
-  var students=readMain_('usuaris').rows
+  var students=readMainCached_('usuaris').rows
     .filter(function(u){return String(u[c.rol])==='alumne'&&String(u[c.classe]).trim()===classe;})
     .map(function(u){return {id:String(u[c.id]),nom:String(u[c.nom]),cognom:String(u[c.cognom])};})
     .sort(function(a,b){return (a.cognom+a.nom).localeCompare(b.cognom+b.nom);});
   if(!students.length) return {classe:classe,students:[],capNoms:RESUM_NOMS};
   var lletra=classe.slice(1); var classe1r='1'+lletra; var classe2n='2'+lletra;
   var cm=CONFIG.cols.moduls; var allModuls=[];
-  readMain_('moduls').rows.forEach(function(m){
+  readMainCached_('moduls').rows.forEach(function(m){
     var curs=normVal_(m[cm.curs]);
     if((curs==='1'||curs==='2')&&normVal_(m[cm.sheetId]))
       allModuls.push({codi:normVal_(m[cm.codi]),nom:String(m[cm.nom]),curs:curs});
@@ -846,7 +878,7 @@ function getInici_(p){
 function listProjects_(p){ var ss=openModule_(p.moduleCodi); return groupProjects_(readOrg_(ss).rows); }
 function getAllProfs_(){
   var c=CONFIG.cols.usuaris;
-  return readMain_('usuaris').rows.filter(function(u){return String(u[c.rol])==='professor';})
+  return readMainCached_('usuaris').rows.filter(function(u){return String(u[c.rol])==='professor';})
     .map(function(u){return {username:String(u[c.username]), nom:String(u[c.nom])+' '+String(u[c.cognom])};});
 }
 function saveProject_(p){
@@ -898,7 +930,7 @@ function serializeDesdoblaments_(map){
 
 function getModulesAll_(){
   var c=CONFIG.cols.moduls;
-  return readMain_('moduls').rows.map(function(r){
+  return readMainCached_('moduls').rows.map(function(r){
     return {codi:normVal_(r[c.codi]),nom:String(r[c.nom]),curs:normVal_(r[c.curs])};
   }).filter(function(m){return m.codi;}).sort(function(a,b){return a.codi.localeCompare(b.codi);});
 }
@@ -907,7 +939,7 @@ function getModulesAll_(){
 function getAdminUsers_(){
   var c=CONFIG.cols.usuaris, admins=[], professors=[], alumnes=[];
   var modIdx=modulesIndex_();
-  readMain_('usuaris').rows.forEach(function(u){
+  readMainCached_('usuaris').rows.forEach(function(u){
     var moduls=parseModuls_(u[c.moduls]).map(function(code){ return modIdx[code]||{codi:code,nom:code}; });
     var obj={id:String(u[c.id]),nom:String(u[c.nom]),cognom:String(u[c.cognom]),
       username:String(u[c.username]),rol:String(u[c.rol]),classe:String(u[c.classe]||''),
@@ -923,6 +955,7 @@ function getAdminUsers_(){
 }
 function resetPassword_(p){
   var c=CONFIG.cols.usuaris;
+  bustMain_('usuaris');
   var data=readMain_('usuaris'); var pwCol=colIndex_(data.headers,c.password);
   if(pwCol<0) throw new Error('No s\'ha trobat la columna password.');
   var sh=getSS_().getSheetByName(CONFIG.sheets.usuaris.name);
@@ -958,6 +991,7 @@ function resetPassword_(p){
 
 function changePassword_(p){
   var c=CONFIG.cols.usuaris;
+  bustMain_('usuaris');
   var data=readMain_('usuaris'); var pwCol=colIndex_(data.headers,c.password);
   if(pwCol<0) throw new Error('No s\'ha trobat la columna password.');
   var sh=getSS_().getSheetByName(CONFIG.sheets.usuaris.name); var found=false;
@@ -973,6 +1007,7 @@ function requestPasswordReset_(p){
   // Escriu el timestamp a la columna M. El trigger checkPendingResets_
   // s'encarrega d'enviar el correu als admins quan detecta canvis.
   var c=CONFIG.cols.usuaris;
+  bustMain_('usuaris');
   var data=readMain_('usuaris'); var col=colIndex_(data.headers,c.resetRequest);
   if(col<0) throw new Error('No s\'ha trobat la columna reset request al full Usuaris.');
   var sh=getSS_().getSheetByName(CONFIG.sheets.usuaris.name); var found=false;
@@ -1085,7 +1120,7 @@ function removeResetTrigger(){
 function checkModulGrups_(p){
   var c=CONFIG.cols.usuaris; var classe=String(p.classe||'').trim(); var moduleCodi=normVal_(p.moduleCodi);
   var hasGroups=false;
-  readMain_('usuaris').rows.forEach(function(u){
+  readMainCached_('usuaris').rows.forEach(function(u){
     if(String(u[c.rol])!=='alumne'||String(u[c.classe]).trim()!==classe) return;
     var desd=parseDesdoblaments_(String(u[c.desdoblaments]||''));
     if(desd[moduleCodi]) hasGroups=true;
@@ -1095,7 +1130,7 @@ function checkModulGrups_(p){
 function getDesdoblaments_(p){
   var c=CONFIG.cols.usuaris; var classe=String(p.classe||'').trim(); var moduleCodi=normVal_(p.moduleCodi);
   var out=[];
-  readMain_('usuaris').rows.forEach(function(u){
+  readMainCached_('usuaris').rows.forEach(function(u){
     if(String(u[c.rol])!=='alumne'||String(u[c.classe]).trim()!==classe) return;
     var desd=parseDesdoblaments_(String(u[c.desdoblaments]||''));
     out.push({id:String(u[c.id]),nom:String(u[c.nom]),cognom:String(u[c.cognom]),grup:desd[moduleCodi]||null});
@@ -1105,6 +1140,7 @@ function getDesdoblaments_(p){
 }
 function saveDesdoblaments_(p){
   var c=CONFIG.cols.usuaris; var moduleCodi=normVal_(p.moduleCodi);
+  bustMain_('usuaris');
   var data=readMain_('usuaris'); var desdCol=colIndex_(data.headers,c.desdoblaments);
   if(desdCol<0) throw new Error('No s\'ha trobat la columna desdoblaments al full Usuaris. Afegeix-la primer.');
   var sh=getSS_().getSheetByName(CONFIG.sheets.usuaris.name);
@@ -1129,6 +1165,7 @@ function listCatalogActivities_(){
   }).sort(function(a,b){ return a.nom.localeCompare(b.nom); });
 }
 function saveCatalogActivity_(p){
+  bustMain_('actInd');
   var c=CONFIG.cols.actInd; var sh=getSS_().getSheetByName(CONFIG.sheets.actInd.name);
   if(!sh) throw new Error('No s\'ha trobat el full "'+CONFIG.sheets.actInd.name+'".');
   var nom=String(p.nom||'').trim(); if(!nom) throw new Error('Cal un nom d\'activitat.');
@@ -1148,6 +1185,7 @@ function saveCatalogActivity_(p){
   return { nom:nom, n:codes.length };
 }
 function deleteCatalogActivity_(p){
+  bustMain_('actInd');
   var c=CONFIG.cols.actInd; var sh=getSS_().getSheetByName(CONFIG.sheets.actInd.name);
   if(!sh) return true;
   _deleteCatalogRows_(sh, String(p.nom||'').trim(), c.activitat);
@@ -1181,6 +1219,25 @@ function ensureModuleTabs_(ss, curs){
     ensureRoster_(cl, classStudents_(curs+letter));
     if(!ss.getSheetByName('Resum '+letter)) ss.insertSheet('Resum '+letter);
   });
+}
+
+/* ========================= BATCH ========================= */
+function getAllClasses_(p) {
+  var courses=getCourses_(p); var seen={}, out=[];
+  courses.forEach(function(curs){ getClasses_({curs:curs}).forEach(function(c){ if(!seen[c]){seen[c]=true;out.push(c);} }); });
+  return out.sort();
+}
+function getInitialData_(p) {
+  var courses=getCourses_(p); var modsByCurs={}, allMods=[], seen={};
+  courses.forEach(function(curs){
+    var mods=getModules_({user:p.user, curs:curs}); modsByCurs[curs]=mods;
+    mods.forEach(function(m){ if(!seen[m.codi]){seen[m.codi]=true;allMods.push(m);} });
+  });
+  return { courses:courses, modsByCurs:modsByCurs, allModules:allMods, allClasses:getAllClasses_(p), capabilities:getCapabilities_() };
+}
+function loginAndInit_(p) {
+  var user=loginUser_(p);
+  return { user:user, initialData:getInitialData_({user:user}) };
 }
 
 function createModuleSheets() {

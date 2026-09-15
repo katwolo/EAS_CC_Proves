@@ -261,13 +261,15 @@ function applyTheme(){document.body.classList.toggle('light',state.theme==='ligh
 function toggleTheme(){state.theme=(state.theme==='light')?'dark':'light';try{localStorage.setItem('eascc_theme',state.theme);}catch(e){}applyTheme();}
 function initTheme(){try{var t=localStorage.getItem('eascc_theme');if(t)state.theme=t;}catch(e){}applyTheme();}
 async function doLogin(username,password){
-  clearError();setPing('Comprovant connexió…');
-  var pong; try{pong=await call('ping');}catch(e){setPing('');return showError('PING ha fallat: '+(e&&e.message?e.message:e));}
-  if(!pong||!pong.ok){setPing('');return showError('PING incorrecte: '+JSON.stringify(pong));}
-  setPing('Connexió OK. Iniciant sessió…');
-  var r; try{r=await call('login',{username:username,password:password});}catch(e){setPing('');return showError('Error de login: '+(e&&e.message?e.message:e));}
+  clearError();setPing('Connectant…');
+  var r; try{r=await call('loginAndInit',{username:username,password:password});}catch(e){setPing('');return showError('Error de connexió: '+(e&&e.message?e.message:e));}
   if(!r||!r.ok){setPing('');return showError(r&&r.error?r.error:'Login fallit.');}
-  setPing('');clearError(); state.user=r.user; state.device=resolveDevice(); enterApp();
+  setPing('');clearError();
+  state.user=r.user;
+  if(r.initialData){ var d=r.initialData;
+    state._courses=d.courses; state._modsByCurs=d.modsByCurs;
+    state._allModules=d.allModules; state._allClasses=d.allClasses; state._capabilities=d.capabilities; }
+  state.device=resolveDevice(); enterApp();
 }
 function formLogin(){doLogin($('u').value.trim(),$('p').value);}
 document.addEventListener('keydown',function(e){if(e.key==='Enter'&&$('app').style.display!=='flex')formLogin();});
@@ -346,16 +348,17 @@ function go(view){
 
 /* ---------- selectors compartits (classe + mòdul) ---------- */
 async function loadAllClasses(){
+  if(state._allClasses) return state._allClasses;
   var rc=await call('getCourses',{user:state.user}); if(!rc.ok){showError(rc.error);return [];}
-  var classes=[];
-  for(var i=0;i<rc.courses.length;i++){
-    var r=await call('getClasses',{curs:rc.courses[i]});
-    if(r.ok) classes=classes.concat(r.classes);
-  }
-  return classes.sort();
+  var results=await Promise.all(rc.courses.map(function(curs){return call('getClasses',{curs:curs});}));
+  var seen={}, classes=[];
+  results.forEach(function(r){if(r.ok) r.classes.forEach(function(c){if(!seen[c]){seen[c]=true;classes.push(c);}});});
+  state._allClasses=classes.sort();
+  return state._allClasses;
 }
 async function loadModulesForClasse(classe){
   if(!classe) return [];
+  if(state._modsByCurs && state._modsByCurs[classe.charAt(0)]) return state._modsByCurs[classe.charAt(0)];
   var r=await call('getModules',{user:state.user,curs:classe.charAt(0)});
   return r.ok?r.modules:[];
 }
@@ -374,9 +377,12 @@ function selectorsBar(classe, modul, classes, modules, onClasse, onModul){
 
 /* selector de mòdul (tots els visibles) */
 async function loadAllModules(){
+  if(state._allModules) return state._allModules;
   var rc=await call('getCourses',{user:state.user}); if(!rc.ok) return [];
+  var results=await Promise.all(rc.courses.map(function(curs){return call('getModules',{user:state.user,curs:curs});}));
   var mods=[], seen={};
-  for(var i=0;i<rc.courses.length;i++){ var r=await call('getModules',{user:state.user,curs:rc.courses[i]}); if(r.ok) r.modules.forEach(function(m){ if(!seen[m.codi]){seen[m.codi]=true;mods.push(m);} }); }
+  results.forEach(function(r){if(r.ok) r.modules.forEach(function(m){if(!seen[m.codi]){seen[m.codi]=true;mods.push(m);}});});
+  state._allModules=mods;
   return mods;
 }
 
@@ -713,8 +719,8 @@ async function renderActivitats(){
 }
 async function openEditActivity(a){
   $('content').innerHTML='<div class="empty">Carregant indicadors…</div>';
-  var rp=await call('getCapabilities',{}); if(!rp.ok) return showError(rp.error);
-  actEdit={ nom:a?a.nom:'', _oldNom:a?a.nom:null, caps:rp.caps, open:null, selected:{}, paraules:a?(a.paraules||''):'' };
+  var caps=state._capabilities; if(!caps){ var rp=await call('getCapabilities',{}); if(!rp.ok) return showError(rp.error); caps=rp.caps; state._capabilities=caps; }
+  actEdit={ nom:a?a.nom:'', _oldNom:a?a.nom:null, caps:caps, open:null, selected:{}, paraules:a?(a.paraules||''):'' };
   if(a){ a.indicators.forEach(function(ind){ actEdit.selected[ind.codi]=true; }); }
   paintActivitatForm();
 }
@@ -858,15 +864,18 @@ async function renderStep(){
 }
 function loadingStep(t){$('step').innerHTML='<div class="empty">'+(t||'Carregant…')+'</div>';}
 async function stepCurs(){
-  loadingStep(); var r=await call('getCourses',{user:state.user}); if(!r.ok) return showError(r.error);
+  loadingStep();
+  var courses=state._courses; if(!courses){ var r=await call('getCourses',{user:state.user}); if(!r.ok) return showError(r.error); courses=r.courses; state._courses=courses; }
   var ord=function(c){return c==='1'?'1r':c==='2'?'2n':c==='3'?'3r':c+'è';};
-  var opts=r.courses.map(function(c){return '<button class="opt center" onclick="pickCurs(\''+c+'\')"><div class="big">'+ord(c)+'</div></button>';}).join('');
+  var opts=courses.map(function(c){return '<button class="opt center" onclick="pickCurs(\''+c+'\')"><div class="big">'+ord(c)+'</div></button>';}).join('');
   $('step').innerHTML='<h2 class="step-title">Selecciona el curs</h2><p class="step-sub">Els mòduls i les classes es filtraran segons el curs.</p><div class="opts">'+(opts||'<div class="empty">No tens cap curs assignat.</div>')+'</div>';
 }
 function pickCurs(c){state.curs=c;state.classe=null;state.module=null;state.step=2;renderStep();}
 async function stepClasse(){
-  loadingStep(); var r=await call('getClasses',{curs:state.curs}); if(!r.ok) return showError(r.error);
-  var opts=r.classes.map(function(c){return '<button class="opt center" onclick="pickClasse(\''+c+'\')"><div class="big">'+esc(c)+'</div></button>';}).join('');
+  loadingStep();
+  var classes=(state._modsByCurs&&state._allClasses)?state._allClasses.filter(function(c){return c.charAt(0)===state.curs;}):null;
+  if(!classes){ var r=await call('getClasses',{curs:state.curs}); if(!r.ok) return showError(r.error); classes=r.classes; }
+  var opts=classes.map(function(c){return '<button class="opt center" onclick="pickClasse(\''+c+'\')"><div class="big">'+esc(c)+'</div></button>';}).join('');
   $('step').innerHTML='<h2 class="step-title">Selecciona la classe</h2><p class="step-sub">Es carregarà el llistat d\'alumnes del grup.</p><div class="opts">'+(opts||'<div class="empty">No hi ha grups per al curs '+esc(state.curs)+'.</div>')+'</div>';
 }
 function pickClasse(c){state.classe=c;state.module=null;state.step=3;renderStep();}
@@ -930,8 +939,8 @@ var newAct={ name:'', caps:[], open:null, selected:{}, paraules:'' };
 var actEdit={ nom:'', _oldNom:null, caps:[], open:null, selected:{}, paraules:'' };
 async function newActivity(){
   loadingStep('Carregant capacitats i indicadors…');
-  var r=await call('getCapabilities',{}); if(!r.ok) return showError(r.error);
-  newAct={ name:'', caps:r.caps, open:null, selected:{}, paraules:'' };
+  var caps=state._capabilities; if(!caps){ var r=await call('getCapabilities',{}); if(!r.ok) return showError(r.error); caps=r.caps; state._capabilities=caps; }
+  newAct={ name:'', caps:caps, open:null, selected:{}, paraules:'' };
   paintNewActivity();
 }
 function toggleCap(ci){ newAct.open=(newAct.open===ci?null:ci); paintNewActivity(); }
@@ -978,8 +987,12 @@ async function createActivity(){
 function pickActivitat(a){state.activity=a;state.step=6;if(!state.editBlock)state.grades={};state.curInd=0;state.activityParaules='';state._indDescExpanded=false;renderStep();}
 async function stepAvaluacio(){
   loadingStep('Carregant indicadors i alumnes…');
-  var ri=await call('getActivityIndicators',{activitat:state.activity,moduleCodi:state.module.codi}); if(!ri.ok) return showError(ri.error);
-  var rs=await call('getStudents',{classe:state.classe,moduleCodi:state.module.codi,grup:state.grup}); if(!rs.ok) return showError(rs.error);
+  var res=await Promise.all([
+    call('getActivityIndicators',{activitat:state.activity,moduleCodi:state.module.codi}),
+    call('getStudents',{classe:state.classe,moduleCodi:state.module.codi,grup:state.grup})
+  ]);
+  var ri=res[0], rs=res[1];
+  if(!ri.ok) return showError(ri.error); if(!rs.ok) return showError(rs.error);
   state.indicators=ri.indicators; state.activityParaules=ri.paraules||''; state.students=rs.data;
   state.indicators.forEach(function(ind){ if(!state.grades[ind.codi]) state.grades[ind.codi]={}; });
   paintAvaluacio();
@@ -1286,8 +1299,8 @@ async function renderActCataleg(){
 }
 async function openEditCatalogActivity(a){
   $('content').innerHTML='<div class="empty">Carregant indicadors…</div>';
-  var rp=await call('getCapabilities',{}); if(!rp.ok) return showError(rp.error);
-  catEdit={ nom:a?a.nom:'', _oldNom:a?a.nom:null, caps:rp.caps, open:null, selected:{}, paraules:a?(a.paraules||''):'' };
+  var caps=state._capabilities; if(!caps){ var rp=await call('getCapabilities',{}); if(!rp.ok) return showError(rp.error); caps=rp.caps; state._capabilities=caps; }
+  catEdit={ nom:a?a.nom:'', _oldNom:a?a.nom:null, caps:caps, open:null, selected:{}, paraules:a?(a.paraules||''):'' };
   if(a){ a.indicators.forEach(function(ind){ catEdit.selected[ind.codi]=true; }); }
   paintCatalegForm();
 }
