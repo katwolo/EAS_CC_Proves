@@ -1,7 +1,8 @@
 /*************************************************************************
- * EAS CC — Backend (Code.gs) · v4
- * Emmagatzematge per mòdul: cada mòdul té el seu Google Sheet amb pestanyes
- *   "Organització Mòdul" · A/B/C (registres en blocs de columnes) · Resum A/B/C
+ * EAS CC — Backend (Code.gs) · v5
+ * Arquitectura un sol Sheet: tots els mòduls estan dins el Sheet principal.
+ *   Pestanyes per mòdul: "{codi} Org" · "{codi} A/B/C" · "{codi} Resum A/B/C" · "{codi} Act"
+ *   Ex. per al mòdul 1139: "1139 Org", "1139 A", "1139 Resum A", "1139 Act"
  *
  * El full PRINCIPAL guarda: Usuaris, Mòduls, Activitats -> Indicadors, Indicadors.
  *
@@ -163,19 +164,18 @@ function normVal_(v){ return String(v==null?'':v).replace(/\.0$/,'').trim(); }
 function colIndex_(h,n){ for(var i=0;i<h.length;i++){ if(String(h[i]).trim()===n) return i+1; } return -1; }
 function capOf_(ind){ return String(ind).split('.')[0]; }
 function letterOf_(classe){ classe=String(classe); return classe.charAt(classe.length-1).toUpperCase(); }
+function modTabName_(codi, suffix){ return String(codi)+' '+suffix; }
 
-/* obre el Sheet d'un mòdul pel Codi */
+/* obre el Sheet d'un mòdul pel Codi — arquitectura un sol Sheet */
 function moduleRow_(codi){
   var c=CONFIG.cols.moduls; var found=null;
   readMainCached_('moduls').rows.forEach(function(r){ if(normVal_(r[c.codi])===normVal_(codi)) found=r; });
   return found;
 }
 function openModule_(codi){
-  var c=CONFIG.cols.moduls; var m=moduleRow_(codi);
+  var m=moduleRow_(codi);
   if(!m) throw new Error('Mòdul no trobat: '+codi);
-  var id=String(m[c.sheetId]).trim();
-  if(!id) throw new Error('El mòdul '+codi+' no té ID de Sheet. Executa createModuleSheets().');
-  return SpreadsheetApp.openById(id);
+  return getSS_();
 }
 
 /* ========================= LOGIN ========================= */
@@ -207,9 +207,10 @@ function getClasses_(p){ var curs=normVal_(p.curs),c=CONFIG.cols.usuaris,seen={}
   return out.sort(); }
 
 /* ============== PROJECTES (Organització Mòdul) ============== */
-function readOrg_(ss){
-  var sh=ss.getSheetByName(CONFIG.modTab.ORG);
-  if(!sh) throw new Error('El mòdul no té la pestanya "'+CONFIG.modTab.ORG+'".');
+function readOrg_(ss, codi){
+  var tabName=modTabName_(codi, 'Org');
+  var sh=ss.getSheetByName(tabName);
+  if(!sh) throw new Error('El mòdul no té la pestanya "'+tabName+'".');
   var v=sh.getDataRange().getValues(); var out=[];
   for(var i=1;i<v.length;i++){
     var prof=String(v[i][0]||'').trim(), num=normVal_(v[i][1]), nom=String(v[i][2]||'').trim(), act=String(v[i][3]||'').trim();
@@ -231,7 +232,7 @@ function groupProjects_(rows){
 }
 function getProjects_(p){
   var ss=openModule_(p.moduleCodi);
-  var all=groupProjects_(readOrg_(ss).rows);
+  var all=groupProjects_(readOrg_(ss, p.moduleCodi).rows);
   var user=p.user||{};
   if(user.rol==='professor'){ all=all.filter(function(pr){ return pr.profs.indexOf(user.username)>-1; }); }
   return all.map(function(pr){ return { num:pr.num, nom:pr.nom, activitats:pr.activitats }; });
@@ -240,7 +241,7 @@ function getActivityTypes_(p){
   // Catàleg global "Activitats -> Indicadors" + activitats pròpies del mòdul
   var out={}; var globalRes=readActivityBlocks_();
   Object.keys(globalRes.blocks).forEach(function(a){ out[a]={activitat:a, nIndicadors:globalRes.blocks[a].length, font:'catàleg', paraules:globalRes.paraules[a]||''}; });
-  if(p && p.moduleCodi){ try{ var ss=openModule_(p.moduleCodi); var modRes=readModuleActivities_(ss); var mod=modRes.map;
+  if(p && p.moduleCodi){ try{ var ss=openModule_(p.moduleCodi); var modRes=readModuleActivities_(ss, p.moduleCodi); var mod=modRes.map;
     Object.keys(mod).forEach(function(a){ out[a]={activitat:a, nIndicadors:mod[a].length, font:'mòdul', paraules:modRes.paraules[a]||''}; }); }catch(e){} }
   return Object.keys(out).map(function(a){ return out[a]; }).sort(function(a,b){ return a.activitat.localeCompare(b.activitat); });
 }
@@ -263,9 +264,9 @@ function indicatorCatalog_(){
       text:String(r[c.text]), colorInd:String(r[c.colorInd]), colorCap:String(r[c.colorCap])}; });
   return map;
 }
-/* activitats pròpies del mòdul (pestanya "Activitats Mòdul" dins el Sheet del mòdul) */
-function readModuleActivities_(ss){
-  var sh=ss.getSheetByName(CONFIG.modAct); if(!sh) return {map:{}, paraules:{}};
+/* activitats pròpies del mòdul (pestanya "{codi} Act" dins el Sheet principal) */
+function readModuleActivities_(ss, codi){
+  var sh=ss.getSheetByName(modTabName_(codi, 'Act')); if(!sh) return {map:{}, paraules:{}};
   var v=sh.getDataRange().getValues(); var map={}, paraules={};
   for(var i=1;i<v.length;i++){
     var a=String(v[i][0]||'').trim(); var code=normVal_(v[i][1]); if(!a)continue;
@@ -276,7 +277,7 @@ function readModuleActivities_(ss){
 }
 function getActivityIndicators_(p){
   var act=String(p.activitat||'').trim(); var codes=null; var paraules='';
-  if(p.moduleCodi){ try{ var ss=openModule_(p.moduleCodi); var res=readModuleActivities_(ss); var mod=res.map;
+  if(p.moduleCodi){ try{ var ss=openModule_(p.moduleCodi); var res=readModuleActivities_(ss, p.moduleCodi); var mod=res.map;
     if(mod[act]){ codes=mod[act]; paraules=res.paraules[act]||''; } }catch(e){} }
   if(!codes){ var ab=readActivityBlocks_(); codes=(ab.blocks[act])||[]; paraules=paraules||(ab.paraules[act]||''); }
   var cat=indicatorCatalog_();
@@ -293,8 +294,9 @@ function getCapabilities_(){
 /* desa una activitat nova dins el mòdul (reutilitzable només en aquest mòdul) */
 function saveActivity_(p){
   var ss=openModule_(p.moduleCodi);
-  var sh=ss.getSheetByName(CONFIG.modAct);
-  if(!sh){ sh=ss.insertSheet(CONFIG.modAct); sh.getRange(1,1,1,3).setValues([['Activitat','Codi Indicador','paraules clau']]).setFontWeight('bold'); }
+  var actTab=modTabName_(p.moduleCodi, 'Act');
+  var sh=ss.getSheetByName(actTab);
+  if(!sh){ sh=ss.insertSheet(actTab); sh.getRange(1,1,1,3).setValues([['Activitat','Codi Indicador','paraules clau']]).setFontWeight('bold'); }
   var nom=String(p.nom||'').trim(); if(!nom) throw new Error('Cal un nom d\'activitat.');
   var codes=(p.indicators||[]).map(normVal_).filter(Boolean);
   if(!codes.length) throw new Error('Tria almenys un indicador.');
@@ -373,8 +375,8 @@ function ensureRoster_(sheet, students){
 function saveRegistre_(p){
   var ss=openModule_(p.moduleCodi);
   var letter=letterOf_(p.classe);
-  var sheet=ss.getSheetByName(letter);
-  if(!sheet) throw new Error('El mòdul no té la pestanya "'+letter+'".');
+  var sheet=ss.getSheetByName(modTabName_(p.moduleCodi, letter));
+  if(!sheet) throw new Error('El mòdul no té la pestanya "'+modTabName_(p.moduleCodi, letter)+'".');
   var T=CONFIG.modTab;
 
   var inds=sortInds_(getActivityIndicators_({activitat:p.activitat, moduleCodi:p.moduleCodi}).indicators); // ordenats per capacitat
@@ -412,8 +414,8 @@ function saveRegistre_(p){
   // reescriu tota la zona de blocs (sense inserir columnes -> sense errors de combinació)
   writeBlocks_(sheet, blocks);
 
-  rebuildResum_(ss, letter);
-  return { width:width, missatge:'Registre desat al mòdul '+p.moduleCodi+' (pestanya '+letter+').' };
+  rebuildResum_(ss, p.moduleCodi, letter);
+  return { width:width, missatge:'Registre desat al mòdul '+p.moduleCodi+' (pestanya '+modTabName_(p.moduleCodi, letter)+').' };
 }
 function safeBreakRow_(sheet,row){ var T=CONFIG.modTab; var lc=Math.max(T.blockCol, sheet.getLastColumn());
   try{ sheet.getRange(row, T.blockCol, 1, lc-T.blockCol+1).breakApart(); }catch(e){} }
@@ -576,12 +578,13 @@ function readRosterRows_(sheet){
 }
 
 /* ============== RESUM (càlcul + escriptura) ============== */
-function rebuildResum_(ss, letter){
-  var src=ss.getSheetByName(letter); if(!src) return;
-  var res=ss.getSheetByName('Resum '+letter); if(!res){ res=ss.insertSheet('Resum '+letter); }
+function rebuildResum_(ss, codi, letter){
+  var src=ss.getSheetByName(modTabName_(codi, letter)); if(!src) return;
+  var resName=modTabName_(codi, 'Resum '+letter);
+  var res=ss.getSheetByName(resName); if(!res){ res=ss.insertSheet(resName); }
   var R=CONFIG.resTab, M=CONFIG.modTab;
   var blocks=readBlocks_(src, true); var roster=readRosterRows_(src);
-  var projects=groupProjects_(readOrg_(ss).rows); // tots els projectes del mòdul
+  var projects=groupProjects_(readOrg_(ss, codi).rows); // tots els projectes del mòdul
 
   // agregació per fila d'alumne
   var perProj={}, glob={};
@@ -663,7 +666,7 @@ function capByName_(name){
 function getEvidencies_(p){
   var ss=openModule_(p.moduleCodi); var out=[];
   ['A','B','C'].forEach(function(letter){
-    var sh=ss.getSheetByName(letter); if(!sh) return;
+    var sh=ss.getSheetByName(modTabName_(p.moduleCodi, letter)); if(!sh) return;
     readBlocks_(sh).forEach(function(b){
       out.push({ moduleCodi:normVal_(p.moduleCodi), classeLetter:letter, startCol:b.startCol,
         projNum:b.projNum, projNom:b.projNom, activitat:b.activitat, data:b.data, nIndicadors:b.width });
@@ -673,7 +676,7 @@ function getEvidencies_(p){
   return out;
 }
 function getBlockDetail_(p){
-  var ss=openModule_(p.moduleCodi); var sh=ss.getSheetByName(p.classeLetter);
+  var ss=openModule_(p.moduleCodi); var sh=ss.getSheetByName(modTabName_(p.moduleCodi, p.classeLetter));
   var blocks=readBlocks_(sh, true); var blk=null; blocks.forEach(function(b){ if(b.startCol==Number(p.startCol)) blk=b; });
   if(!blk) throw new Error('Bloc no trobat.');
   var roster=readRosterRows_(sh);
@@ -696,10 +699,10 @@ function getBlockDetail_(p){
     projNum:blk.projNum, projNom:blk.projNom, activitat:blk.activitat, data:blk.data, grades:grades };
 }
 function deleteRegistre_(p){
-  var ss=openModule_(p.moduleCodi); var sh=ss.getSheetByName(p.classeLetter);
+  var ss=openModule_(p.moduleCodi); var sh=ss.getSheetByName(modTabName_(p.moduleCodi, p.classeLetter));
   var blocks=readBlocks_(sh, true).filter(function(b){ return b.startCol!=Number(p.startCol); });
   writeBlocks_(sh, blocks);            // reescriu sense el bloc eliminat (sense esborrar columnes)
-  rebuildResum_(ss, p.classeLetter);
+  rebuildResum_(ss, p.moduleCodi, p.classeLetter);
   return true;
 }
 
@@ -730,7 +733,7 @@ function weightedNota_(cells, pesos){
 /* ============== RESUM (lectura per al web) ============== */
 function getModuleResum_(p){
   var ss=openModule_(p.moduleCodi); var letter=letterOf_(p.classe);
-  var src=ss.getSheetByName(letter); if(!src) return { students:[], classMean:{}, capNoms:RESUM_NOMS };
+  var src=ss.getSheetByName(modTabName_(p.moduleCodi, letter)); if(!src) return { students:[], classMean:{}, capNoms:RESUM_NOMS };
   var blocks=readBlocks_(src, true); var roster=readRosterRows_(src);
   var glob={}, classSum={}, classCnt={}; CAPS.forEach(function(c){classSum[c]=0;classCnt[c]=0;});
   roster.forEach(function(rr){ glob[rr.row]={}; });
@@ -820,7 +823,7 @@ function getClassGlobalResum_(p){
   var cm=CONFIG.cols.moduls; var allModuls=[];
   readMainCached_('moduls').rows.forEach(function(m){
     var curs=normVal_(m[cm.curs]);
-    if((curs==='1'||curs==='2')&&normVal_(m[cm.sheetId]))
+    if((curs==='1'||curs==='2')&&normVal_(m[cm.codi]))
       allModuls.push({codi:normVal_(m[cm.codi]),nom:String(m[cm.nom]),curs:curs});
   });
   var nameToId={};
@@ -862,7 +865,7 @@ function getClassGlobalResum_(p){
 /* ============== INICI ============== */
 function getInici_(p){
   var ss=openModule_(p.moduleCodi); var letter=letterOf_(p.classe);
-  var src=ss.getSheetByName(letter); var nAl=(getStudents_({classe:p.classe,moduleCodi:p.moduleCodi}).regular||[]).length;
+  var src=ss.getSheetByName(modTabName_(p.moduleCodi, letter)); var nAl=(getStudents_({classe:p.classe,moduleCodi:p.moduleCodi}).regular||[]).length;
   if(!src) return { nAlumnes:nAl, nEvidencies:0, nValoracions:0, nAlumnesAval:0, dist:{r:0,a:0,b:0,v:0,na:0}, classMean:{}, capNoms:RESUM_NOMS };
   var blocks=readBlocks_(src, true); var roster=readRosterRows_(src);
   var dist={r:0,a:0,b:0,v:0,na:0}, vals=0, avalSet={};
@@ -875,14 +878,14 @@ function getInici_(p){
 }
 
 /* ============== GESTIÓ DE PROJECTES ============== */
-function listProjects_(p){ var ss=openModule_(p.moduleCodi); return groupProjects_(readOrg_(ss).rows); }
+function listProjects_(p){ var ss=openModule_(p.moduleCodi); return groupProjects_(readOrg_(ss, p.moduleCodi).rows); }
 function getAllProfs_(){
   var c=CONFIG.cols.usuaris;
   return readMainCached_('usuaris').rows.filter(function(u){return String(u[c.rol])==='professor';})
     .map(function(u){return {username:String(u[c.username]), nom:String(u[c.nom])+' '+String(u[c.cognom])};});
 }
 function saveProject_(p){
-  var ss=openModule_(p.moduleCodi); var org=readOrg_(ss); var sh=org.sheet;
+  var ss=openModule_(p.moduleCodi); var org=readOrg_(ss, p.moduleCodi); var sh=org.sheet;
   var num=normVal_(p.num);
   org.rows.filter(function(r){return r.num===num;}).map(function(r){return r.__row;}).sort(function(a,b){return b-a;}).forEach(function(rw){ sh.deleteRow(rw); });
   var profs=(p.professors||[]).join(', ');
@@ -890,7 +893,7 @@ function saveProject_(p){
   return { num:num };
 }
 function deleteProject_(p){
-  var ss=openModule_(p.moduleCodi); var org=readOrg_(ss); var sh=org.sheet; var num=normVal_(p.num);
+  var ss=openModule_(p.moduleCodi); var org=readOrg_(ss, p.moduleCodi); var sh=org.sheet; var num=normVal_(p.num);
   org.rows.filter(function(r){return r.num===num;}).map(function(r){return r.__row;}).sort(function(a,b){return b-a;}).forEach(function(rw){ sh.deleteRow(rw); });
   return true;
 }
@@ -898,7 +901,7 @@ function deleteProject_(p){
 /* ============== GESTIÓ D'ACTIVITATS PRÒPIES DEL MÒDUL ============== */
 function listModuleActivities_(p){
   var ss=openModule_(p.moduleCodi);
-  var res=readModuleActivities_(ss); var map=res.map;
+  var res=readModuleActivities_(ss, p.moduleCodi); var map=res.map;
   var cat=indicatorCatalog_();
   return Object.keys(map).map(function(nom){
     return { nom:nom, paraules:res.paraules[nom]||'', indicators:map[nom].map(function(codi){
@@ -908,7 +911,7 @@ function listModuleActivities_(p){
 }
 function deleteActivity_(p){
   var ss=openModule_(p.moduleCodi);
-  var sh=ss.getSheetByName(CONFIG.modAct); if(!sh) return true;
+  var sh=ss.getSheetByName(modTabName_(p.moduleCodi, 'Act')); if(!sh) return true;
   var nom=String(p.nom||'').trim();
   var v=sh.getDataRange().getValues();
   for(var i=v.length-1;i>=1;i--){ if(String(v[i][0]||'').trim()===nom) sh.deleteRow(i+1); }
@@ -1203,21 +1206,25 @@ function _deleteCatalogRows_(sh, nom, actCol){
  * createModuleSheets() — crea el Google Sheet de cada mòdul sense ID,
  * amb les pestanyes i el roster, i escriu l'ID a la pestanya Mòduls.
  *************************************************************************/
-/* crea/repara les pestanyes d'un Sheet de mòdul (idempotent) */
-function ensureModuleTabs_(ss, curs){
+/* crea/repara les pestanyes d'un mòdul dins el Sheet principal (idempotent) */
+function ensureModuleTabs_(ss, codi, curs){
   var T=CONFIG.modTab;
-  var org=ss.getSheetByName(T.ORG); if(!org) org=ss.insertSheet(T.ORG);
+  var orgName=modTabName_(codi, 'Org');
+  var org=ss.getSheetByName(orgName); if(!org) org=ss.insertSheet(orgName);
   if(String(org.getRange(1,1).getValue()).trim()===''){
     org.getRange(1,1,1,3).setValues([['Usuaris/ Professorat implicat','Núm. Projecte','Nom projecte']]).setFontWeight('bold');
   }
-  var act=ss.getSheetByName(CONFIG.modAct); if(!act){ act=ss.insertSheet(CONFIG.modAct); act.getRange(1,1,1,2).setValues([['Activitat','Codi Indicador']]).setFontWeight('bold'); }
+  var actName=modTabName_(codi, 'Act');
+  var act=ss.getSheetByName(actName); if(!act){ act=ss.insertSheet(actName); act.getRange(1,1,1,2).setValues([['Activitat','Codi Indicador']]).setFontWeight('bold'); }
   ['A','B','C'].forEach(function(letter){
-    var cl=ss.getSheetByName(letter); if(!cl) cl=ss.insertSheet(letter);
+    var clName=modTabName_(codi, letter);
+    var cl=ss.getSheetByName(clName); if(!cl) cl=ss.insertSheet(clName);
     if(String(cl.getRange(T.titleRow,T.blockCol).getValue()).trim()===''){
       cl.getRange(T.titleRow,T.blockCol).setValue('LES CAPACITATS CLAU - PROGRÉS I AVALUACIÓ ANUAL').setFontWeight('bold');
     }
     ensureRoster_(cl, classStudents_(curs+letter));
-    if(!ss.getSheetByName('Resum '+letter)) ss.insertSheet('Resum '+letter);
+    var resumName=modTabName_(codi, 'Resum '+letter);
+    if(!ss.getSheetByName(resumName)) ss.insertSheet(resumName);
   });
 }
 
@@ -1241,16 +1248,13 @@ function loginAndInit_(p) {
 }
 
 function createModuleSheets() {
-  var c=CONFIG.cols.moduls; var mData=readMain_('moduls'); var msh=getSS_().getSheetByName(CONFIG.sheets.moduls.name);
-  var idCol=colIndex_(mData.headers, c.sheetId);
+  var c=CONFIG.cols.moduls; var mData=readMain_('moduls'); var ss=getSS_();
   mData.rows.forEach(function(m){
-    var codi=normVal_(m[c.codi]), nom=String(m[c.nom]), curs=normVal_(m[c.curs]);
-    var id=String(m[c.sheetId]).trim(); var ss;
+    var codi=normVal_(m[c.codi]), curs=normVal_(m[c.curs]);
+    if(!codi) return;
     try{
-      if(!id){ ss=SpreadsheetApp.create('Mòdul '+codi+' — '+nom); ss.getSheets()[0].setName(CONFIG.modTab.ORG); msh.getRange(m.__row,idCol).setValue(ss.getId()); }
-      else { ss=SpreadsheetApp.openById(id); }
-      ensureModuleTabs_(ss, curs);
-      Logger.log('OK mòdul %s -> %s', codi, ss.getId());
+      ensureModuleTabs_(ss, codi, curs);
+      Logger.log('OK mòdul %s', codi);
     }catch(err){ Logger.log('ERROR mòdul %s: %s', codi, String(err)); }
   });
   Logger.log('createModuleSheets/reparació feta.');
