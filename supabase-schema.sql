@@ -83,6 +83,18 @@ CREATE TABLE IF NOT EXISTS registres (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ========================= PESOS DE LES CC PER CURS =========================
+CREATE TABLE IF NOT EXISTS pesos (
+  curs TEXT PRIMARY KEY,           -- '1', '2', '' (EAS global)
+  c1 NUMERIC NOT NULL DEFAULT 0,
+  c2 NUMERIC NOT NULL DEFAULT 0,
+  c3 NUMERIC NOT NULL DEFAULT 0,
+  c4 NUMERIC NOT NULL DEFAULT 0,
+  c5 NUMERIC NOT NULL DEFAULT 0,
+  c6 NUMERIC NOT NULL DEFAULT 0,
+  c7 NUMERIC NOT NULL DEFAULT 0
+);
+
 -- ========================= VALORACIONS =========================
 CREATE TABLE IF NOT EXISTS valoracions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -114,3 +126,4 @@ ALTER TABLE module_activitats  DISABLE ROW LEVEL SECURITY;
 ALTER TABLE org_projectes      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE registres          DISABLE ROW LEVEL SECURITY;
 ALTER TABLE valoracions        DISABLE ROW LEVEL SECURITY;
+ALTER TABLE pesos              DISABLE ROW LEVEL SECURITY;

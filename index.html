@@ -221,6 +221,7 @@ var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 var _CAPS = ['c1','c2','c3','c4','c5','c6','c7'];
 var _CAP_COLORS = {c1:'#4f8ef7',c2:'#e0a23c',c3:'#3fb27f',c4:'#7aa9ff',c5:'#e25563',c6:'#a78bfa',c7:'#34d399'};
 var _CAP_NOMS_DEFAULT = {c1:'Organització',c2:'Iniciativa',c3:'Responsabilitat',c4:'Autonomia',c5:'Treball equip',c6:'Rel. interpersonals',c7:'Resolució'};
+var _PESOS_CACHE = null;
 
 /* ── Helpers ── */
 function letterOf_(classe){ return classe ? classe.slice(-1).toUpperCase() : ''; }
@@ -281,9 +282,21 @@ function _bestScoresFromBlocks(blocks, alumneId){
   });
   return scores;
 }
-function _notaFromCells(cells){
+function _notaFromCells(cells, pesosRow){
+  var hasVals=_CAPS.some(function(c){return cells[c]!=null;});
+  if(!hasVals) return null;
+  if(pesosRow){
+    var num=0,den=0;
+    _CAPS.forEach(function(c){if(cells[c]==null)return; var w=parseFloat(pesosRow[c])||0; num+=cells[c]*w; den+=w;});
+    return den>0?Math.round(num/den*10)/10:null;
+  }
   var vals=_CAPS.map(function(c){return cells[c];}).filter(function(v){return v!=null;});
-  return vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10:null;
+  return Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10;
+}
+async function _getPesos(){
+  if(_PESOS_CACHE) return _PESOS_CACHE;
+  var {data}=await _sb.from('pesos').select('*');
+  var m={}; (data||[]).forEach(function(r){m[r.curs]=r;}); _PESOS_CACHE=m; return m;
 }
 async function _getBlocksRaw(modCodi, classeLetter){
   var q=_sb.from('registres').select('*').eq('module_codi',modCodi).order('seq_id');
@@ -703,20 +716,26 @@ async function sb_getAlumneGlobalResum(p){
     (valsByMod[m.codi]||[]).forEach(function(v){var n=normVal_(v.nota);if(n==null)return;if(best[v.indicador_codi]==null||n>best[v.indicador_codi])best[v.indicador_codi]=n;});
     return {codi:m.codi,nom:m.nom,curs:m.curs,cells:_capMeanFromScores(best)};
   });
+  var pesosMap=await _getPesos();
   function globalForCurs(c){
     var mList=modules.filter(function(m){return m.curs===c&&_CAPS.some(function(cap){return m.cells[cap]!=null;});});
     if(!mList.length) return {nota:null,cells:{}};
     var capSums={},capCounts={};
     mList.forEach(function(m){_CAPS.forEach(function(cap){if(m.cells[cap]!=null){capSums[cap]=(capSums[cap]||0)+m.cells[cap];capCounts[cap]=(capCounts[cap]||0)+1;}});});
     var cells={};_CAPS.forEach(function(cap){cells[cap]=capCounts[cap]?Math.round(capSums[cap]/capCounts[cap]*10)/10:null;});
-    return {nota:_notaFromCells(cells),cells:cells};
+    return {nota:_notaFromCells(cells,pesosMap[c]),cells:cells};
   }
   var global1r=globalForCurs('1'),global2n=globalForCurs('2');
+  /* globalCicle: average of both year cells; nota uses simple average (pesos already applied per year) */
   var gcSums={},gcCounts={};
   modules.forEach(function(m){_CAPS.forEach(function(c){if(m.cells[c]!=null){gcSums[c]=(gcSums[c]||0)+m.cells[c];gcCounts[c]=(gcCounts[c]||0)+1;}});});
   var gcCells={};_CAPS.forEach(function(c){gcCells[c]=gcCounts[c]?Math.round(gcSums[c]/gcCounts[c]*10)/10:null;});
+  var gcNota=null;
+  if(global1r.nota!=null&&global2n.nota!=null) gcNota=Math.round((global1r.nota+global2n.nota)/2*10)/10;
+  else if(global1r.nota!=null) gcNota=global1r.nota;
+  else if(global2n.nota!=null) gcNota=global2n.nota;
   return {ok:true,data:{id:userRow.id,nom:userRow.nom,cognom:userRow.cognom,classe:userRow.classe||'',
-    modules:modules,global1r:global1r,global2n:global2n,globalCicle:{nota:_notaFromCells(gcCells),cells:gcCells},capNoms:capNoms}};
+    modules:modules,global1r:global1r,global2n:global2n,globalCicle:{nota:gcNota,cells:gcCells},capNoms:capNoms}};
 }
 
 /* ── Class global resum (PDF) ── */
@@ -735,9 +754,11 @@ async function sb_getClassGlobalResum(p){
     if(bestByStudent[v.alumne_id][v.indicador_codi]==null||n>bestByStudent[v.alumne_id][v.indicador_codi])
       bestByStudent[v.alumne_id][v.indicador_codi]=n;
   });
+  var pesosMap=await _getPesos();
   var rows=students.map(function(u){
     var cells=_capMeanFromScores(bestByStudent[u.id]||{});
-    return {id:u.id,nom:u.nom,cognom:u.cognom,classe:u.classe||'',cells:cells,nota:_notaFromCells(cells)};
+    var curs=(u.classe||'').charAt(0);
+    return {id:u.id,nom:u.nom,cognom:u.cognom,classe:u.classe||'',cells:cells,nota:_notaFromCells(cells,pesosMap[curs])};
   }).sort(function(a,b){return (a.cognom+a.nom).localeCompare(b.cognom+b.nom);});
   return {ok:true,data:{students:rows,capNoms:capNoms}};
 }

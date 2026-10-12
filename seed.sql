@@ -116,4 +116,12 @@ INSERT INTO usuaris (id, nom, cognom, correu, username, password, rol, classe, m
   ('u55', 'Sergi', 'Milà Rovira', 'ieb@ieb.cat', 's.mila', '1234', 'alumne', '2C', '', '', '', '', ''),
   ('u56', 'Cristina', 'Torrents Bové', 'ieb@ieb.cat', 'c.torrents', '1234', 'alumne', '2C', '', '', '', '', '');
 
+-- ----- Pesos de les CC per curs -----
+-- 1r: c1=18, c2=13, c3=18, c4=13, c5=18, c6=13, c7=7  (suma=100)
+-- 2n: pesos iguals (100/7 cada una)
+-- Pots modificar els valors des de Supabase → Table Editor → pesos
+INSERT INTO pesos (curs, c1, c2, c3, c4, c5, c6, c7) VALUES
+  ('1', 18, 13, 18, 13, 18, 13, 7),
+  ('2', 14.285714, 14.285714, 14.285714, 14.285714, 14.285714, 14.285714, 14.285716);
+
 -- Done.
