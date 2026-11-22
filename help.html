@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Guia EAS CC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #F7F9FC;
+  --surface: #FFFFFF;
+  --text: #1A2438;
+  --muted: #4C5B75;
+  --faint: #8695AE;
+  --border: #C9D4E4;
+  --accent: #1E5EA8;
+  --accent-light: #EAF1FB;
+  --accent-mid: #3B7DD8;
+  --tip-bg: #EDF7F1;
+  --tip-border: #1A7A4A;
+  --tip-text: #14593A;
+  --warn-bg: #FFF7ED;
+  --warn-border: #B86A0A;
+  --warn-text: #8B4A00;
+  --ok-bg: #EEF9F3;
+  --ok-border: #2A9E5E;
+  --ok-text: #176038;
+  --step-bg: #EEF4FD;
+  --step-num: #1E5EA8;
+  --rule: #D4DDEE;
+  --contact-a-bg: #EAF1FB;
+  --contact-b-bg: #EDF7F1;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111926;
+    --surface: #182035;
+    --text: #DDE5F4;
+    --muted: #8A9BB8;
+    --faint: #5A6E8A;
+    --border: #2A3A56;
+    --accent: #4F8FE8;
+    --accent-light: #162140;
+    --accent-mid: #5A9AEF;
+    --tip-bg: #0D2920;
+    --tip-border: #25965C;
+    --tip-text: #7DD8AD;
+    --warn-bg: #231408;
+    --warn-border: #C47A1A;
+    --warn-text: #EFBA6A;
+    --ok-bg: #0C2818;
+    --ok-border: #2E9E5E;
+    --ok-text: #80D4A8;
+    --step-bg: #162140;
+    --step-num: #5A9AEF;
+    --rule: #243350;
+    --contact-a-bg: #162140;
+    --contact-b-bg: #0D2920;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #111926;
+  --surface: #182035;
+  --text: #DDE5F4;
+  --muted: #8A9BB8;
+  --faint: #5A6E8A;
+  --border: #2A3A56;
+  --accent: #4F8FE8;
+  --accent-light: #162140;
+  --accent-mid: #5A9AEF;
+  --tip-bg: #0D2920;
+  --tip-border: #25965C;
+  --tip-text: #7DD8AD;
+  --warn-bg: #231408;
+  --warn-border: #C47A1A;
+  --warn-text: #EFBA6A;
+  --ok-bg: #0C2818;
+  --ok-border: #2E9E5E;
+  --ok-text: #80D4A8;
+  --step-bg: #162140;
+  --step-num: #5A9AEF;
+  --rule: #243350;
+  --contact-a-bg: #162140;
+  --contact-b-bg: #0D2920;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cover {
+  background: var(--accent);
+  color: #fff;
+  padding: 52px 40px 44px;
+  position: relative;
+  overflow: hidden;
+}
+.cover::after {
+  content: '';
+  position: absolute;
+  right: -60px; top: -60px;
+  width: 320px; height: 320px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+  pointer-events: none;
+}
+.cover-inner { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+.cover-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+.cover h1 {
+  font-family: var(--serif);
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.cover-sub {
+  font-size: 16px;
+  opacity: .82;
+  margin: 0;
+  max-width: 520px;
+}
+.cover-meta {
+  margin-top: 28px;
+  display: flex; gap: 24px; flex-wrap: wrap;
+  font-size: 13px; opacity: .7;
+}
+.cover-meta span { display: flex; align-items: center; gap: 6px; }
+
+.page { max-width: 760px; margin: 0 auto; padding: 0 24px 80px; }
+
+.assistant-banner {
+  display: flex; align-items: center; gap: 18px;
+  background: linear-gradient(135deg, #1a3a6e 0%, #1e5ea8 100%);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin: 28px 0 0;
+  color: #fff;
+  text-decoration: none;
+  transition: filter .2s, transform .15s;
+  box-shadow: 0 4px 18px -4px rgba(30,94,168,.45);
+}
+.assistant-banner:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.assistant-banner .ab-icon {
+  font-size: 32px; flex-shrink: 0;
+  background: rgba(255,255,255,.15);
+  width: 52px; height: 52px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+}
+.assistant-banner .ab-body { flex: 1; }
+.assistant-banner .ab-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; opacity: .7; margin-bottom: 3px;
+}
+.assistant-banner .ab-title { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+.assistant-banner .ab-sub { font-size: 13px; opacity: .78; }
+.assistant-banner .ab-arrow { font-size: 20px; opacity: .6; flex-shrink: 0; }
+
+.toc-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin: 36px 0 0;
+}
+.toc-wrap h2 {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 16px;
+}
+.toc {
+  list-style: none;
+  margin: 0; padding: 0;
+  columns: 2; column-gap: 32px;
+}
+@media (max-width: 520px) { .toc { columns: 1; } }
+.toc li { margin-bottom: 6px; break-inside: avoid; }
+.toc a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13.5px;
+  display: flex; align-items: baseline; gap: 8px;
+  transition: color .15s;
+}
+.toc a:hover { color: var(--accent); }
+.toc a .toc-n {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  min-width: 18px;
+}
+
+.section {
+  margin-top: 52px;
+  padding-top: 36px;
+  border-top: 1px solid var(--rule);
+}
+.section:first-of-type { border-top: none; margin-top: 44px; }
+
+.section-head {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 20px;
+}
+.section-num {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 14px; font-weight: 600;
+  display: grid; place-items: center;
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
+}
+.section h2 {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  text-wrap: balance;
+  color: var(--text);
+}
+.section .section-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+p { margin: 0 0 14px; color: var(--text); font-size: 15px; }
+p:last-child { margin-bottom: 0; }
+
+.steps { list-style: none; margin: 20px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.steps li {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--step-bg);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.steps li .sn {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12.5px; font-weight: 600;
+  display: grid; place-items: center;
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.steps li .st { font-size: 14.5px; line-height: 1.55; flex: 1; }
+.steps li .st strong { color: var(--accent-mid); font-weight: 600; }
+
+.callout {
+  border-radius: 10px;
+  padding: 14px 16px 14px 18px;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.callout .icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.callout .body { flex: 1; }
+.callout .body strong { display: block; margin-bottom: 3px; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+.callout.tip { background: var(--tip-bg); border-left: 3px solid var(--tip-border); color: var(--tip-text); }
+.callout.warn { background: var(--warn-bg); border-left: 3px solid var(--warn-border); color: var(--warn-text); }
+.callout.ok { background: var(--ok-bg); border-left: 3px solid var(--ok-border); color: var(--ok-text); }
+
+.tbl-wrap { overflow-x: auto; margin: 20px 0; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+tbody td { padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--accent-light); }
+td strong { color: var(--accent-mid); font-weight: 600; }
+
+.contacts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+@media (max-width: 520px) { .contacts { grid-template-columns: 1fr; } }
+.contact-card {
+  border-radius: 12px;
+  padding: 22px 22px 20px;
+  border: 1px solid var(--border);
+}
+.contact-card.tech { background: var(--contact-a-bg); }
+.contact-card.ped { background: var(--contact-b-bg); }
+.contact-card .cc-icon { font-size: 26px; margin-bottom: 10px; }
+.contact-card h3 {
+  font-family: var(--serif);
+  font-size: 17px; font-weight: 700;
+  margin: 0 0 4px;
+}
+.contact-card .cc-role {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+.contact-card .cc-email {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 500;
+  word-break: break-all;
+}
+.contact-card .cc-desc {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.faq { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
+.faq-item {
+  border-bottom: 1px solid var(--rule);
+  padding: 18px 0;
+}
+.faq-item:last-child { border-bottom: none; }
+.faq-q {
+  font-weight: 600;
+  font-size: 14.5px;
+  margin-bottom: 7px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.faq-q::before {
+  content: 'P';
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: grid; place-items: center;
+  margin-top: 1px;
+}
+.faq-a {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  padding-left: 32px;
+}
+
+.doc-footer {
+  margin-top: 60px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+  font-size: 12.5px;
+  color: var(--faint);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+
+.step-head {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 28px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.step-head .sh-n {
+  display: inline-grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px; font-weight: 700;
+}
+
+@media print {
+  body { background: #fff; color: #000; font-size: 13px; }
+  .cover { background: #1E5EA8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #fff !important; padding: 36px 32px 32px; }
+  .toc-wrap { border: 1px solid #ccc; break-inside: avoid; }
+  .section { break-inside: avoid-page; }
+  .section-num { background: #EAF1FB !important; color: #1E5EA8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .steps li { background: #EEF4FD !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .callout { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .contact-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a { color: inherit; text-decoration: none; }
+  .doc-footer { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <div class="cover-badge">📋 Manual d'usuari</div>
+    <h1>Guia d'ús de l'EAS CC<br>per al professorat</h1>
+    <p class="cover-sub">Registre d'evidències i Capacitats Clau del Cicle Formatiu — pas a pas</p>
+    <div class="cover-meta">
+      <span>🏫 Institut de l'Esport de Barcelona</span>
+      <span>📅 Novembre 2026</span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+  <a class="assistant-banner" href="https://gemini.google.com/gem/874ceee4f57e" target="_blank" rel="noopener">
+    <div class="ab-icon">🤖</div>
+    <div class="ab-body">
+      <div class="ab-label">Assistent virtual</div>
+      <div class="ab-title">Tens dubtes? Pregunta a l'assistent EAS CC</div>
+      <div class="ab-sub">Respon preguntes sobre l'aplicació les 24 h, en català</div>
+    </div>
+    <div class="ab-arrow">→</div>
+  </a>
+
+  <div class="toc-wrap">
+    <h2>Contingut</h2>
+    <ul class="toc">
+      <li><a href="#s1"><span class="toc-n">1</span>Accés a l'aplicació</a></li>
+      <li><a href="#s2"><span class="toc-n">2</span>Primer accés i contrasenya</a></li>
+      <li><a href="#s3"><span class="toc-n">3</span>La pantalla principal</a></li>
+      <li><a href="#s4"><span class="toc-n">4</span>Enregistrar una activitat ⭐</a></li>
+      <li><a href="#s5"><span class="toc-n">5</span>Crear una activitat nova</a></li>
+      <li><a href="#s6"><span class="toc-n">6</span>Editar una activitat</a></li>
+      <li><a href="#s7"><span class="toc-n">7</span>Esborrar una activitat</a></li>
+      <li><a href="#s8"><span class="toc-n">8</span>Veure l'Historial</a></li>
+      <li><a href="#s9"><span class="toc-n">9</span>Veure el Resum MP</a></li>
+      <li><a href="#s10"><span class="toc-n">10</span>Veure l'Alumnat</a></li>
+      <li><a href="#s11"><span class="toc-n">11</span>Canviar la contrasenya</a></li>
+      <li><a href="#s12"><span class="toc-n">12</span>He oblidat la contrasenya</a></li>
+      <li><a href="#s13"><span class="toc-n">13</span>Contacte i suport</a></li>
+      <li><a href="#s14"><span class="toc-n">14</span>Preguntes freqüents</a></li>
+    </ul>
+  </div>
+
+  <!-- 1 -->
+  <div class="section" id="s1">
+    <div class="section-head">
+      <div class="section-num">1</div>
+      <div>
+        <div class="section-tag">Inici</div>
+        <h2>Accés a l'aplicació</h2>
+      </div>
+    </div>
+    <p>L'aplicació funciona des del navegador, sense instal·lar res. Pots accedir-hi des de qualsevol ordinador, tauleta o mòbil amb connexió a internet.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Obre el navegador (Chrome, Firefox, Safari o Edge) i accedeix a l'adreça de l'aplicació.</span></li>
+      <li><span class="sn">2</span><span class="st">Apareixerà la pantalla d'inici de sessió amb dos camps: <strong>Nom d'usuari</strong> i <strong>Contrasenya</strong>.</span></li>
+      <li><span class="sn">3</span><span class="st">Escriu el teu nom d'usuari (te'l ha facilitat l'administrador) i la teva contrasenya.</span></li>
+      <li><span class="sn">4</span><span class="st">Fes clic al botó <strong>Entrar</strong>. Si les dades són correctes, accediràs directament a la pantalla principal.</span></li>
+    </ul>
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div class="body"><strong>Consell</strong>Desa l'adreça als favorits del navegador per no haver-la d'escriure cada cop. Al Chrome: fes clic a l'estrella ★ a la barra d'adreces.</div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="section" id="s2">
+    <div class="section-head">
+      <div class="section-num">2</div>
+      <div>
+        <div class="section-tag">Configuració inicial</div>
+        <h2>Primer accés: canvi de contrasenya</h2>
+      </div>
+    </div>
+    <p>La primera vegada que entres (o si t'han restablert la contrasenya), el sistema t'assigna la contrasenya inicial <strong>1234</strong>. Hauràs de canviar-la obligatòriament abans de continuar.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Entra amb la contrasenya <strong>1234</strong>. Apareixerà automàticament un formulari de canvi.</span></li>
+      <li><span class="sn">2</span><span class="st">Al camp <strong>Nova contrasenya</strong>, escriu la contrasenya que vols fer servir d'ara endavant.</span></li>
+      <li><span class="sn">3</span><span class="st">Al camp <strong>Confirma contrasenya</strong>, torna a escriure exactament la mateixa contrasenya.</span></li>
+      <li><span class="sn">4</span><span class="st">Fes clic a <strong>Desar</strong>. Ja podràs accedir amb la nova contrasenya.</span></li>
+    </ul>
+    <div class="callout warn">
+      <span class="icon">⚠️</span>
+      <div class="body"><strong>Important</strong>Tria una contrasenya que no facis servir en cap altra plataforma. No la comparteixis amb ningú.</div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="section" id="s3">
+    <div class="section-head">
+      <div class="section-num">3</div>
+      <div>
+        <div class="section-tag">Orientació</div>
+        <h2>La pantalla principal</h2>
+      </div>
+    </div>
+    <p>Un cop has entrat, veuràs la pantalla principal. A la part superior hi ha la <strong>barra de navegació</strong> amb accés a totes les seccions. A la cantonada superior dreta apareix el teu nom.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Opció del menú</th><th>Per a què serveix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Evidències ▾</strong></td><td>Menú desplegable. Conté <em>Enregistrar</em> i <em>Historial</em>.</td></tr>
+          <tr><td><strong>Enregistrar</strong></td><td>Per registrar una nova activitat d'avaluació (el que faràs més sovint).</td></tr>
+          <tr><td><strong>Historial</strong></td><td>Llista de totes les activitats que has registrat, amb opció d'editar-les o esborrar-les.</td></tr>
+          <tr><td><strong>Resum MP</strong></td><td>Notes acumulades de Capacitats Clau per a cada alumne/a.</td></tr>
+          <tr><td><strong>Alumnat</strong></td><td>Llistat complet dels teus alumnes i el seu resum individual.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="section" id="s4">
+    <div class="section-head">
+      <div class="section-num">4</div>
+      <div>
+        <div class="section-tag">Funció principal ⭐</div>
+        <h2>Enregistrar una activitat</h2>
+      </div>
+    </div>
+    <p>Cada cop que realitzis una activitat d'avaluació amb els teus alumnes, l'has d'enregistrar aquí. Segueix aquests sis passos:</p>
+
+    <div class="step-head"><span class="sh-n">1</span> Accedeix a "Enregistrar"</div>
+    <p>Situa el cursor sobre el menú <strong>Evidències ▾</strong> a la barra superior. S'obrirà un desplegable. Fes clic a <strong>Enregistrar</strong>.</p>
+
+    <div class="step-head"><span class="sh-n">2</span> Selecciona el mòdul</div>
+    <p>Apareixerà un selector per triar el <strong>mòdul</strong> que vols avaluar. Fes clic al desplegable i tria el mòdul corresponent.</p>
+
+    <div class="step-head"><span class="sh-n">3</span> Selecciona l'activitat</div>
+    <p>Veuràs el llistat de les activitats disponibles per a aquell mòdul. Fes clic a l'activitat que has realitzat.</p>
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div class="body"><strong>L'activitat no apareix a la llista?</strong>Si no veus l'activitat que cerques, potser cal crear-la primer. Consulta la secció 5 per saber com afegir una activitat nova al mòdul.</div>
+    </div>
+
+    <div class="step-head"><span class="sh-n">4</span> Selecciona els alumnes</div>
+    <p>Tens dues opcions:</p>
+    <ul style="margin:8px 0 14px;padding-left:24px;font-size:14.5px;line-height:1.7">
+      <li><strong>Tots els alumnes:</strong> Marca la casella "Tots" per seleccionar tota la classe d'un cop.</li>
+      <li><strong>Alumnes concrets:</strong> Marca la casella de cada alumne/a que hagi realitzat l'activitat.</li>
+    </ul>
+
+    <div class="step-head"><span class="sh-n">5</span> Emplena les qualificacions</div>
+    <p>Per a cada alumne/a seleccionat/da, introdueix la nota de cada <strong>Capacitat Clau (CC)</strong> que avalua l'activitat. Les notes van de <strong>0 a 10</strong>.</p>
+
+    <div class="step-head"><span class="sh-n">6</span> Desa l'activitat</div>
+    <p>Fes clic al botó <strong>Desar</strong>. L'aplicació confirmarà que les dades s'han guardat correctament.</p>
+
+    <div class="callout ok">
+      <span class="icon">✅</span>
+      <div class="body"><strong>Confirmació</strong>Apareixerà un missatge verd indicant que l'enregistrament ha estat correcte. Si no apareix, les dades no s'han guardat.</div>
+    </div>
+    <div class="callout warn">
+      <span class="icon">⚠️</span>
+      <div class="body"><strong>Atenció</strong>Si tanques la pestanya o el navegador <em>sense</em> fer clic a "Desar", les dades es perdran.</div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="section" id="s5">
+    <div class="section-head">
+      <div class="section-num">5</div>
+      <div>
+        <div class="section-tag">Gestió d'activitats</div>
+        <h2>Crear una activitat nova</h2>
+      </div>
+    </div>
+    <p>Quan vols enregistrar una activitat que encara no existeix a la llista del teu mòdul, pots crear-ne una de nova. Fes clic al botó <strong>+ Nova Activitat</strong> i segueix aquests passos:</p>
+
+    <div class="step-head"><span class="sh-n">1</span> Comprova que l'activitat compleix els criteris</div>
+    <p>En fer clic a <strong>+ Nova Activitat</strong> apareixerà un quadre de diàleg amb una llista de criteris. Llegeix-los i marca cada casella per confirmar que l'activitat els compleix:</p>
+    <ul style="margin:8px 0 14px;padding-left:24px;font-size:14.5px;line-height:1.7">
+      <li>Està temporitzada a la programació des de l'inici del projecte/curs.</li>
+      <li>Està contextualitzada al projecte/contingut.</li>
+      <li>Té més d'un indicador/capacitat clau associada.</li>
+      <li>Permet descriure accions associades als indicadors avaluats.</li>
+      <li>Ofereix a l'alumnat la possibilitat de mostrar les capacitats clau que se li avaluen de forma senzilla.</li>
+    </ul>
+
+    <div class="step-head"><span class="sh-n">2</span> Emplena el nom de l'activitat</div>
+    <p>Escriu el nom que identificarà l'activitat (per exemple: <em>"Presentació oral del projecte"</em>).</p>
+
+    <div class="step-head"><span class="sh-n">3</span> Selecciona els indicadors i afegeix-hi hashtags</div>
+    <p>Marca els indicadors (Capacitats Clau) que avalua l'activitat. Per a cada indicador seleccionat, escriu la <strong>paraula clau o hashtag</strong> específica (per exemple: <em>#presentació</em>, <em>#treball-en-equip</em>).</p>
+
+    <div class="step-head"><span class="sh-n">4</span> Desa l'activitat</div>
+    <p>Fes clic a <strong>Desar</strong>. L'activitat nova quedarà disponible a la llista del teu mòdul.</p>
+  </div>
+
+  <!-- 6 -->
+  <div class="section" id="s6">
+    <div class="section-head">
+      <div class="section-num">6</div>
+      <div>
+        <div class="section-tag">Correccions</div>
+        <h2>Editar una activitat ja enregistrada</h2>
+      </div>
+    </div>
+    <p>Si has comès un error en una qualificació o vols modificar qualsevol dada d'una activitat ja registrada, pots fer-ho des de l'Historial.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Situa el cursor sobre <strong>Evidències ▾</strong> i fes clic a <strong>Historial</strong>.</span></li>
+      <li><span class="sn">2</span><span class="st">Localitza l'activitat que vols editar.</span></li>
+      <li><span class="sn">3</span><span class="st">Fes clic al botó d'editar (icona de llapis <strong>✏️</strong>) que apareix al costat de l'activitat.</span></li>
+      <li><span class="sn">4</span><span class="st">S'obrirà el formulari amb les dades actuals. Modifica les qualificacions o les dades que calgui.</span></li>
+      <li><span class="sn">5</span><span class="st">Fes clic a <strong>Desar</strong> per confirmar els canvis.</span></li>
+    </ul>
+  </div>
+
+  <!-- 7 -->
+  <div class="section" id="s7">
+    <div class="section-head">
+      <div class="section-num">7</div>
+      <div>
+        <div class="section-tag">Correccions</div>
+        <h2>Esborrar una activitat</h2>
+      </div>
+    </div>
+    <p>Si necessites eliminar completament un registre, pots fer-ho des de l'Historial.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Situa el cursor sobre <strong>Evidències ▾</strong> i fes clic a <strong>Historial</strong>.</span></li>
+      <li><span class="sn">2</span><span class="st">Localitza l'activitat que vols esborrar.</span></li>
+      <li><span class="sn">3</span><span class="st">Fes clic al botó d'esborrar (icona de paperera <strong>🗑️</strong>) que apareix al costat de l'activitat.</span></li>
+      <li><span class="sn">4</span><span class="st">Apareixerà un missatge de confirmació. Fes clic a <strong>Confirmar</strong> per eliminar-lo, o a <strong>Cancel·lar</strong> si has canviat d'idea.</span></li>
+    </ul>
+    <div class="callout warn">
+      <span class="icon">⚠️</span>
+      <div class="body"><strong>Atenció: acció irreversible</strong>Un cop esborrat, el registre no es pot recuperar.</div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="section" id="s8">
+    <div class="section-head">
+      <div class="section-num">8</div>
+      <div>
+        <div class="section-tag">Consulta</div>
+        <h2>Veure l'Historial d'activitats</h2>
+      </div>
+    </div>
+    <p>L'Historial et mostra totes les activitats d'avaluació que has registrat fins ara.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Situa el cursor sobre <strong>Evidències ▾</strong> i fes clic a <strong>Historial</strong>.</span></li>
+      <li><span class="sn">2</span><span class="st">Veuràs la llista d'activitats amb: data, nom de l'activitat, mòdul i nombre d'alumnes avaluats.</span></li>
+      <li><span class="sn">3</span><span class="st">Fes clic sobre una activitat per veure els detalls complets: les qualificacions de cada alumne/a per Capacitat Clau.</span></li>
+    </ul>
+  </div>
+
+  <!-- 9 -->
+  <div class="section" id="s9">
+    <div class="section-head">
+      <div class="section-num">9</div>
+      <div>
+        <div class="section-tag">Consulta</div>
+        <h2>Veure el Resum MP</h2>
+      </div>
+    </div>
+    <p>El Resum MP mostra les notes acumulades de cada alumne/a en les Capacitats Clau al llarg de tot el mòdul.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Fes clic a <strong>Resum MP</strong> a la barra de navegació.</span></li>
+      <li><span class="sn">2</span><span class="st">Si tens més d'un mòdul assignat, selecciona el que vols consultar.</span></li>
+      <li><span class="sn">3</span><span class="st">Veuràs una taula: les files són els alumnes, les columnes són les Capacitats Clau.</span></li>
+      <li><span class="sn">4</span><span class="st">Els colors indiquen el nivell: <strong style="color:var(--ok-border)">verd</strong> (aprovat), ambre (en procés), <strong style="color:#C0392B">vermell</strong> (suspès).</span></li>
+    </ul>
+  </div>
+
+  <!-- 10 -->
+  <div class="section" id="s10">
+    <div class="section-head">
+      <div class="section-num">10</div>
+      <div>
+        <div class="section-tag">Consulta</div>
+        <h2>Veure l'Alumnat</h2>
+      </div>
+    </div>
+    <p>La secció Alumnat mostra el llistat de tots els alumnes de la teva classe i el seu resum individual de Capacitats Clau.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Fes clic a <strong>Alumnat</strong> a la barra de navegació.</span></li>
+      <li><span class="sn">2</span><span class="st">Veuràs el llistat d'alumnes amb nom, cognom i classe assignada.</span></li>
+      <li><span class="sn">3</span><span class="st">Fes clic sobre el nom d'un/a alumne/a per veure el seu resum individual.</span></li>
+    </ul>
+    <div class="callout tip">
+      <span class="icon">🔒</span>
+      <div class="body"><strong>Privacitat de les notes numèriques</strong>Quan un/a alumne/a accedeix a la seva pròpia vista, únicament veu les qualificacions en format de colors (semàfor). Les notes numèriques finals no són visibles per a l'alumnat.</div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="section" id="s11">
+    <div class="section-head">
+      <div class="section-num">11</div>
+      <div>
+        <div class="section-tag">El teu compte</div>
+        <h2>Canviar la contrasenya</h2>
+      </div>
+    </div>
+    <p>Pots canviar la contrasenya en qualsevol moment des del teu perfil.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">Fes clic al teu <strong>nom</strong> a la cantonada superior dreta de la pantalla.</span></li>
+      <li><span class="sn">2</span><span class="st">Al menú que apareix, selecciona <strong>Canviar contrasenya</strong>.</span></li>
+      <li><span class="sn">3</span><span class="st">Emplena els tres camps: <strong>Contrasenya actual</strong>, <strong>Nova contrasenya</strong> i <strong>Confirma nova contrasenya</strong>.</span></li>
+      <li><span class="sn">4</span><span class="st">Fes clic a <strong>Desar</strong>. A partir d'ara hauràs de fer servir la nova contrasenya per entrar.</span></li>
+    </ul>
+  </div>
+
+  <!-- 12 -->
+  <div class="section" id="s12">
+    <div class="section-head">
+      <div class="section-num">12</div>
+      <div>
+        <div class="section-tag">El teu compte</div>
+        <h2>He oblidat la contrasenya</h2>
+      </div>
+    </div>
+    <p>Si no recordes la contrasenya, pots sol·licitar un restabliment automàtic des de la pantalla d'inici de sessió.</p>
+    <ul class="steps">
+      <li><span class="sn">1</span><span class="st">A la pantalla d'inici de sessió, fes clic a <strong>"He oblidat la contrasenya"</strong>.</span></li>
+      <li><span class="sn">2</span><span class="st">El sistema generarà automàticament una <strong>contrasenya temporal</strong> i te l'enviarà al teu <strong>correu corporatiu</strong>.</span></li>
+      <li><span class="sn">3</span><span class="st">Obre el correu i copia la contrasenya temporal. Tens <strong>24 hores</strong> per fer-la servir; passat aquest temps, caldrà tornar a sol·licitar-ne una.</span></li>
+      <li><span class="sn">4</span><span class="st">Entra a l'aplicació amb la contrasenya temporal. El sistema et demanarà que triïs una nova contrasenya definitiva.</span></li>
+      <li><span class="sn">5</span><span class="st">Estableix la nova contrasenya i fes clic a <strong>Desar</strong>. Ja pots accedir normalment.</span></li>
+    </ul>
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <div class="body"><strong>No trobes el correu?</strong>Comprova la carpeta de <strong>correu no desitjat</strong> (spam o brossa). De vegades els correus automàtics hi van a parar.</div>
+    </div>
+    <div class="callout warn">
+      <span class="icon">⏱️</span>
+      <div class="body"><strong>La contrasenya temporal caduca</strong>La contrasenya temporal és vàlida durant 24 hores. Si la fas servir fora d'aquest termini, hauràs de sol·licitar un nou restabliment.</div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="section" id="s13">
+    <div class="section-head">
+      <div class="section-num">13</div>
+      <div>
+        <div class="section-tag">Ajuda</div>
+        <h2>Contacte i suport</h2>
+      </div>
+    </div>
+    <p>Tenim dues persones de referència segons el tipus de dubte o problema.</p>
+    <div class="contacts">
+      <div class="contact-card tech">
+        <div class="cc-icon">🔧</div>
+        <h3>Iván Bustos</h3>
+        <div class="cc-role">Suport tècnic</div>
+        <div class="cc-email">📧 ibustos@ieb.cat</div>
+        <div class="cc-desc">Problemes tècnics amb l'aplicació: no pots entrar, la pàgina no carrega, apareix un error, alguna funció no respon correctament, etc.</div>
+      </div>
+      <div class="contact-card ped">
+        <div class="cc-icon">📚</div>
+        <h3>Nau Marieges</h3>
+        <div class="cc-role">Coordinació pedagògica</div>
+        <div class="cc-email">📧 nmarieges@ieb.cat</div>
+        <div class="cc-desc">Dubtes sobre quines activitats enregistrar, com classificar una activitat dins les Capacitats Clau, o qualsevol qüestió pedagògica sobre l'avaluació.</div>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:20px">
+      <span class="icon">💡</span>
+      <div class="body"><strong>Quan escriguis al suport tècnic</strong>Explica el problema el més detalladament possible: <em>què estaves intentant fer</em>, <em>quin missatge d'error ha aparegut</em> (si n'hi ha), i <em>quin navegador fas servir</em>. Això accelera molt la resolució.</div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="section" id="s14">
+    <div class="section-head">
+      <div class="section-num">14</div>
+      <div>
+        <div class="section-tag">Referència ràpida</div>
+        <h2>Preguntes freqüents</h2>
+      </div>
+    </div>
+    <div class="faq">
+      <div class="faq-item">
+        <div class="faq-q">No puc entrar a l'aplicació. Què faig?</div>
+        <div class="faq-a">Comprova que el nom d'usuari i la contrasenya siguin correctes (les lletres majúscules i minúscules compten). Si has oblidat la contrasenya, segueix els passos de la secció 12. Si continua sense funcionar, escriu a l'Iván Bustos (ibustos@ieb.cat).</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">He enregistrat una nota incorrecta. Puc canviar-la?</div>
+        <div class="faq-a">Sí. Ves a <strong>Evidències → Historial</strong>, localitza l'activitat i fes clic al botó d'editar (✏️). Modifica la nota i desa els canvis. Consulta la secció 6 per als passos detallats.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">He enregistrat una activitat per error. Com l'elimino?</div>
+        <div class="faq-a">Ves a <strong>Evidències → Historial</strong> i fes clic al botó d'esborrar (🗑️) al costat de l'activitat. Confirma l'eliminació. Recorda que un cop esborrada no es pot recuperar. Consulta la secció 7.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">La pàgina no carrega o es queda en blanc.</div>
+        <div class="faq-a">Prova a recarregar la pàgina prement la tecla <strong>F5</strong> (o <strong>Ctrl+R</strong> a Windows, <strong>Cmd+R</strong> a Mac). Si no funciona, tanca el navegador del tot, torna a obrir-lo i intenta-ho de nou. Si persisteix, escriu a l'Iván Bustos.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">No veig els meus alumnes a la llista.</div>
+        <div class="faq-a">Comprova que has seleccionat el mòdul correcte al desplegable. Si el problema persisteix, posa't en contacte amb l'Iván Bustos.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Puc fer servir l'aplicació des del mòbil o la tauleta?</div>
+        <div class="faq-a">Sí, l'aplicació és accessible des de qualsevol dispositiu amb navegador i connexió a internet. Tanmateix, l'experiència és més còmoda des d'un ordinador o tauleta, especialment per enregistrar activitats amb molts alumnes.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Les notes del Resum MP no semblen correctes.</div>
+        <div class="faq-a">El resum es calcula automàticament a partir de totes les activitats enregistrades. Comprova l'Historial per verificar que totes les activitats estan registrades correctament. Si tens dubtes sobre com es calcula la nota, consulta la Nau Marieges (nmarieges@ieb.cat).</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">L'activitat que necessito no apareix a la llista del mòdul.</div>
+        <div class="faq-a">Si l'activitat no està a la llista, cal crear-la. Fes clic a <strong>+ Nova Activitat</strong>, revisa la llista de criteris, omple el nom, selecciona els indicadors i afegeix-hi els hashtags. Consulta la secció 5 per als passos detallats.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Els alumnes poden veure les seves notes numèriques?</div>
+        <div class="faq-a">No. Quan un/a alumne/a accedeix a la seva vista, únicament veu les qualificacions en format de colors (semàfor: verd, ambre, vermell). Les notes numèriques finals del cicle no són visibles per a l'alumnat; només el professorat i l'equip docent hi té accés.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">He rebut una contrasenya temporal però ja han passat les 24 hores.</div>
+        <div class="faq-a">Si la contrasenya temporal ha caducat, torna a fer clic a <strong>"He oblidat la contrasenya"</strong> a la pantalla d'inici de sessió. El sistema et n'enviarà una de nova al teu correu corporatiu.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>EAS CC — Guia d'ús per al professorat</span>
+    <span>Novembre 2026 · Institut de l'Esport de Barcelona</span>
+  </div>
+
+</div>
+</body>
+</html>
