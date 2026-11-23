@@ -1,5 +1,5 @@
 /* Demo.gs — fitxer addicional, separat del Code.gs oficial d'EAS CC.
- * Necessita Setup.gs (crida setupNewSheet() i clearAppCache()). */
+ * Necessita les funcions setupNewSheet() i clearAppCache() de code.gs. */
 
 /*************************************************************************
  * DADES DE PROVA (DEMO)
